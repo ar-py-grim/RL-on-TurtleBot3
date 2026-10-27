@@ -66,7 +66,6 @@ class DDQNAgent(Node):
         self.succeed = False
         self.fail = False
 
-        # Hyperparameters used for the reported DDQN results
         self.discount_factor = 0.99
         self.learning_rate = 0.0007
         self.epsilon = 1.0
@@ -96,8 +95,6 @@ class DDQNAgent(Node):
 
         if self.load_model:
             self.model.set_weights(load_model(self.model_path, compile=False).get_weights())
-            # Sync the target network with the loaded weights, otherwise it stays
-            # random until the first scheduled target update.
             self.update_target_model()
             with open(os.path.join(
                 self.model_dir_path,
@@ -202,8 +199,6 @@ class DDQNAgent(Node):
         print('Model saved:', self.model_path)
 
     def wait_for_future(self, future):
-        # The MultiThreadedExecutor in main() is already spinning this node,
-        # so the worker thread only has to wait for the response.
         while rclpy.ok() and not future.done():
             time.sleep(0.001)
         return future.result()
@@ -238,7 +233,8 @@ class DDQNAgent(Node):
 
         if self.train_mode:
             self.step_counter+= 1
-            self.epsilon = self.epsilon_min + (1.0-self.epsilon_min) * math.exp(-1.0*self.step_counter/self.epsilon_decay)
+            self.epsilon = self.epsilon_min + (1.0-self.epsilon_min) * math.exp(
+                -1.0*self.step_counter/self.epsilon_decay)
             lucky = random.random()
             if lucky > (1-self.epsilon):
                 result = random.randint(0, self.action_size-1)
@@ -301,7 +297,7 @@ class DDQNAgent(Node):
 
         next_states = numpy.array([transition[3] for transition in data_in_mini_batch])
         next_states = next_states.squeeze()
-        # DDQN: the online network selects the next action, the target network evaluates it.
+        # the online network selects the next action, the target network evaluates it.
         next_qvalues_online = self.model.predict(next_states, verbose=0)
         next_qvalues_target = self.target_model.predict(next_states, verbose=0)
 
